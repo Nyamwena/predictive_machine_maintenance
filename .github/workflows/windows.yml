@@ -1,0 +1,37 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller flask keras scikit-learn numpy pandas
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed \
+          --add-data "templates;templates" \
+          --add-data "guaranteed_3class_lstm_model.h5;." \
+          --add-data "guaranteed_3class_lstm_model_preprocessing.pkl;." \
+          --name MyFlaskApp \
+          main.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: MyFlaskApp-windows
+        path: dist/MyFlaskApp.exe

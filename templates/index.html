@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPPA-T3000 Mill Machine Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .control-group select, .control-group input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .real-time-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .real-time-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .sensor-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s;
+        }
+
+        .sensor-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .sensor-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .sensor-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-normal { background-color: #27ae60; }
+        .status-warning { background-color: #f39c12; }
+        .status-critical { background-color: #e74c3c; }
+
+        .results-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .recommendations {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .recommendation-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .recommendation-item.high { border-left-color: #e74c3c; }
+        .recommendation-item.medium { border-left-color: #f39c12; }
+        .recommendation-item.low { border-left-color: #27ae60; }
+
+        .recommendation-priority {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .recommendation-priority.high { color: #e74c3c; }
+        .recommendation-priority.medium { color: #f39c12; }
+        .recommendation-priority.low { color: #27ae60; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-card h3 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .summary-card.normal h3 { color: #27ae60; }
+        .summary-card.warning h3 { color: #f39c12; }
+        .summary-card.critical h3 { color: #e74c3c; }
+        .summary-card.total h3 { color: #667eea; }
+
+        .predictions-table {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .predictions-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .predictions-table th,
+        .predictions-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .predictions-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        @media (max-width: 768px) {
+            .results-section {
+                grid-template-columns: 1fr;
+            }
+
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏭 SPPA-T3000 Mill Machine Simulator</h1>
+            <p>Advanced Predictive Maintenance System with Real-Time Monitoring</p>
+        </div>
+
+        <!-- Real-Time Status Panel -->
+        <div class="real-time-panel">
+            <h3>🔴 Real-Time System Status</h3>
+            <div id="currentStatus" class="sensor-card" style="text-align: center; margin: 15px 0;">
+                <span class="status-indicator status-normal"></span>
+                <strong>System Initializing...</strong>
+            </div>
+            <div class="real-time-grid" id="realTimeData">
+                <!-- Real-time sensor data will be populated here -->
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h3>⚙️ Simulation Controls</h3>
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="simulationType">Simulation Type:</label>
+                    <select id="simulationType">
+                        <option value="days">Days</option>
+                        <option value="months">Months</option>
+                        <option value="years">Years</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="duration">Duration:</label>
+                    <input type="number" id="duration" value="14" min="1" max="365">
+                </div>
+
+                <div class="control-group">
+                    <label for="condition">Operating Condition:</label>
+                    <select id="condition">
+                        <option value="normal">Normal Operation</option>
+                        <option value="warning">Warning Conditions</option>
+                        <option value="critical">Critical Conditions</option>
+                        <option value="degradation">Gradual Degradation</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button class="btn btn-primary" onclick="runSimulation()">🚀 Run Simulation</button>
+                </div>
+
+                <div class="control-group">
+                    <button class="btn btn-secondary" onclick="exportReport()">📊 Export Report</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            Running simulation... Please wait.
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" style="display: none;">
+            <!-- Summary Cards -->
+            <div class="summary-cards" id="summaryCards">
+                <!-- Summary cards will be populated here -->
+            </div>
+
+            <!-- Charts and Recommendations -->
+            <div class="results-section">
+                <div class="chart-container">
+                    <h3>📈 Sensor Data Trends</h3>
+                    <canvas id="sensorChart" width="400" height="200"></canvas>
+                </div>
+
+                <div class="recommendations">
+                    <h3>🔧 Maintenance Recommendations</h3>
+                    <div id="recommendationsList">
+                        <!-- Recommendations will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predictions Table -->
+            <div class="chart-container">
+                <h3>🔮 Prediction Results</h3>
+                <div class="predictions-table">
+                    <table id="predictionsTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                                <th>Confidence</th>
+                                <th>Normal %</th>
+                                <th>Warning %</th>
+                                <th>Critical %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="predictionsTableBody">
+                            <!-- Predictions will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let realTimeInterval;
+        let sensorChart;
+        let currentSimulationData = {};
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            startRealTimeMonitoring();
+        });
+
+        function startRealTimeMonitoring() {
+            // Update real-time data every 5 seconds
+            updateRealTimeData();
+            realTimeInterval = setInterval(updateRealTimeData, 5000);
+        }
+
+        function updateRealTimeData() {
+            fetch('/real-time-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateRealTimeDisplay(data.data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching real-time data:', error);
+                });
+        }
+
+        function updateRealTimeDisplay(data) {
+            // Update current status
+            const statusElement = document.getElementById('currentStatus');
+            const statusClass = data.status.toLowerCase();
+            statusElement.innerHTML = `
+                <span class="status-indicator status-${statusClass}"></span>
+                <strong>System Status: ${data.status}</strong>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    Last Updated: ${new Date(data.timestamp).toLocaleString()}
+                </div>
+            `;
+
+            // Update sensor grid
+            const realTimeGrid = document.getElementById('realTimeData');
+            realTimeGrid.innerHTML = `
+                <div class="sensor-card">
+                    <h4>Mill Motor Air Temperature</h4>
+                    <div class="sensor-value">${data.mill_motor_air_temp.toFixed(1)}°C</div>
+                </div>
+                <div class="sensor-card">
+                    <h4>Coal Feed Flow</h4>
+                    <div class="sensor-value">${data.coal_feed_flow.toFixed(1)} t/h</div>
+                </div>
+                <div class="sensor-card">
+                    <h4>Mill Inlet Temperature</h4>
+                    <div class="sensor-value">${data.mill_inlet_temp.toFixed(1)}°C</div>
+                </div>
+                <div class="sensor-card">
+                    <h4>Mill Differential Pressure</h4>
+                    <div class="sensor-value">${data.mill_diff_pressure.toFixed(2)} bar</div>
+                </div>
+                <div class="sensor-card">
+                    <h4>Mill Motor Current</h4>
+                    <div class="sensor-value">${data.mill_motor_current.toFixed(1)} A</div>
+                </div>
+                <div class="sensor-card">
+                    <h4>Vibrations Velocity</h4>
+                    <div class="sensor-value">${data.vibrations_velocity.toFixed(2)} mm/s</div>
+                </div>
+                <div class="sensor-card">
+                    <h4>Mill Outlet Temperature</h4>
+                    <div class="sensor-value">${data.mill_outlet_temp.toFixed(1)}°C</div>
+                </div>
+                <div class="sensor-card">
+                    <h4>Machine Loading</h4>
+                    <div class="sensor-value">${data.machine_loading.toFixed(1)}%</div>
+                </div>
+            `;
+        }
+
+        function runSimulation() {
+            const simulationType = document.getElementById('simulationType').value;
+            const duration = parseInt(document.getElementById('duration').value);
+            const condition = document.getElementById('condition').value;
+
+            if (!duration || duration < 1) {
+                showAlert('Please enter a valid duration.', 'error');
+                return;
+            }
+
+            // Show loading indicator
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+
+            // Prepare simulation data
+            const simulationData = {
+                type: simulationType,
+                duration: duration,
+                condition: condition
+            };
+
+            // Make API call
+            fetch('/simulate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(simulationData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+
+                if (data.success) {
+                    currentSimulationData = data;
+                    displayResults(data);
+                    showAlert('Simulation completed successfully!', 'success');
+                } else {
+                    showAlert(`Simulation failed: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                showAlert(`Network error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            });
+        }
+
+        function displayResults(data) {
+            // Show results section
+            document.getElementById('resultsSection').style.display = 'block';
+
+            // Update summary cards
+            updateSummaryCards(data.summary);
+
+            // Update sensor chart
+            updateSensorChart(data.sensor_data);
+
+            // Update recommendations
+            updateRecommendations(data.recommendations);
+
+            // Update predictions table
+            updatePredictionsTable(data.predictions);
+        }
+
+        function updateSummaryCards(summary) {
+            const summaryCards = document.getElementById('summaryCards');
+            summaryCards.innerHTML = `
+                <div class="summary-card total">
+                    <h3>${summary.total_periods}</h3>
+                    <p>Total Predictions</p>
+                </div>
+                <div class="summary-card normal">
+                    <h3>${summary.normal_count}</h3>
+                    <p>Normal Conditions</p>
+                </div>
+                <div class="summary-card warning">
+                    <h3>${summary.warning_count}</h3>
+                    <p>Warning Conditions</p>
+                </div>
+                <div class="summary-card critical">
+                    <h3>${summary.critical_count}</h3>
+                    <p>Critical Conditions</p>
+                </div>
+            `;
+        }
+
+        function updateSensorChart(sensorData) {
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+
+            // Destroy existing chart if it exists
+            if (sensorChart) {
+                sensorChart.destroy();
+            }
+
+            const labels = sensorData.timestamps.map(ts => new Date(ts).toLocaleDateString());
+
+            sensorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Motor Current (A)',
+                            data: sensorData.mill_motor_current,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Vibrations (mm/s)',
+                            data: sensorData.vibrations_velocity.map(v => v * 50), // Scale for visibility
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Motor Air Temp (°C)',
+                            data: sensorData.mill_motor_air_temp,
+                            borderColor: 'rgb(255, 206, 86)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Key Sensor Parameters Over Time'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateRecommendations(recommendations) {
+            const recommendationsList = document.getElementById('recommendationsList');
+
+            if (recommendations.length === 0) {
+                recommendationsList.innerHTML = '<p>No specific recommendations at this time.</p>';
+                return;
+            }
+
+            recommendationsList.innerHTML = recommendations.map(rec => `
+                <div class="recommendation-item ${rec.priority.toLowerCase()}">
+                    <div class="recommendation-priority ${rec.priority.toLowerCase()}">${rec.priority} Priority</div>
+                    <h4>${rec.action}</h4>
+                    <p>${rec.description}</p>
+                    <div style="margin-top: 10px;">
+                        <strong>Timeline:</strong> ${rec.timeline}<br>
+                        <strong>Components:</strong> ${rec.components.join(', ')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updatePredictionsTable(predictions) {
+            const tableBody = document.getElementById('predictionsTableBody');
+
+            tableBody.innerHTML = predictions.map(pred => `
+                <tr>
+                    <td>${new Date(pred.timestamp).toLocaleString()}</td>
+                    <td>
+                        <span class="status-indicator status-${pred.status.toLowerCase()}"></span>
+                        ${pred.status}
+                    </td>
+                    <td>${(pred.confidence * 100).toFixed(1)}%</td>
+                    <td>${(pred.probabilities.normal * 100).toFixed(1)}%</td>
+                    <td>${(pred.probabilities.warning * 100).toFixed(1)}%</td>
+                    <td>${(pred.probabilities.critical * 100).toFixed(1)}%</td>
+                </tr>
+            `).join('');
+        }
+
+        function exportReport() {
+            if (!currentSimulationData || !currentSimulationData.success) {
+                showAlert('No simulation data available to export. Please run a simulation first.', 'error');
+                return;
+            }
+
+            fetch('/export-report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    total_periods: currentSimulationData.summary.total_periods,
+                    normal_count: currentSimulationData.summary.normal_count,
+                    warning_count: currentSimulationData.summary.warning_count,
+                    critical_count: currentSimulationData.summary.critical_count,
+                    recommendations: currentSimulationData.recommendations
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Create and download the report
+                    const blob = new Blob([data.report_content], { type: 'text/plain' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `SPPA-T3000_Simulation_Report_${new Date().toISOString().split('T')[0]}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+
+                    showAlert('Report exported successfully!', 'success');
+                } else {
+                    showAlert(`Export failed: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showAlert(`Export error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            });
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+
+            alertContainer.appendChild(alertDiv);
+
+            // Auto-remove alert after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (realTimeInterval) {
+                clearInterval(realTimeInterval);
+            }
+        });
+    </script>
+</body>
+</html>
